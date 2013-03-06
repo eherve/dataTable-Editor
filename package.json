@@ -1,0 +1,13 @@
+{
+  "name": "dataTable-Editor",
+  "description": "A plugin Editor for dataTable that allows the creation, edition and suppression of data in tables.",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eherve/dataTable-Editor.git"
+  },
+  "authors": [
+    "Francois-Regis Robert",
+    "Eric Herve <eric.herve.95@gmail.com>"
+  ]
+}
