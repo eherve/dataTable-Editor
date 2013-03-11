@@ -169,10 +169,19 @@ function retrieveData(form) {
 	form.find('textarea').each(function() {
 		data[$(this).attr('name')] = $(this).val();
 	});
+
+	form.find('select').each(function() {
+		var selected = $.map($(this).find('option:selected') ,function(option) {
+			return option.value;
+		});
+        data[$(this).attr('name')] = selected;
+    });
+
   return data;
 }
 
 function addDefault(form, data) {
+	var self = this;
   form.find('input').each(function() {
 	  var val = $(this).attr('name');
 	  if (val.indexOf(']') != -1) {
@@ -193,6 +202,28 @@ function addDefault(form, data) {
 	  eval('val = data.'+val);
 		$(this).val(val);
 	});
+	form.find('select').each(function() {
+		var that = $(this);
+		$.ajax({
+			dataType: "json",
+			type: "POST",
+			url: that.attr('src'),
+			success: function(data) {
+				for (var o in data) {
+					var opt = $('<option/>');
+					opt.attr('value', data[o].value);
+					opt.text(data[o].text);
+					if (jQuery.inArray(data[o].value, data[that.attr('name')]))
+						opt.attr('selected', 'selected');
+					that.append(opt);
+				}
+			},
+			error: function(err) {
+				alert(JSON.stringify(err));
+			}
+		});
+		
+	});
 }
 
 function clearData(form) {
@@ -206,6 +237,9 @@ function clearData(form) {
 	form.find('textarea').each(function() {
         $(this).val("");
     });
+	form.find('select').each(function() {
+		$(this).find('option').remove();
+	});
 }
 
 
@@ -219,11 +253,22 @@ function addField(form, field) {
     else if (field.type == 'password') addPasswordField(group, field);
     else if (field.type == 'checkbox') addCheckboxField(group, field);
     else if (field.type == 'textarea') addTextareaField(group, field);
+    else if (field.type == 'select') addSelectField(group, field);
   } else console.error("Field type", field.type, "not managed !");
 }
 
 function addLabelField(group, field) {
   $('<label class="control-label"/>').appendTo(group).text(field.label);
+}
+
+function addSelectField(group, field) {
+	if (field.label)
+        $('<label class="control-label"/>').appendTo(group).text(field.label);
+	var v = $('<select/>').appendTo($('<div class="controls"/>').appendTo(group))
+        .attr('name', field.name);
+	if (typeof field.multiple !== 'undefined' && field.multiple == true)
+		v.attr('multiple', 'multiple');
+	v.attr('src', field.src);
 }
 
 function addTextareaField(group, field) {
