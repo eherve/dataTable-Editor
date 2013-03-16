@@ -204,26 +204,13 @@ function addDefault(form, data) {
 	});
 	form.find('select').each(function() {
 		var that = $(this);
-		$.ajax({
-			dataType: "json",
-			type: "POST",
-			url: that.attr('src'),
-			success: function(data) {
-				for (var o in data) {
-					var opt = $('<option/>');
-					opt.attr('value', data[o].value);
-					opt.text(data[o].text);
-					if (jQuery.inArray(data[o].value, data[that.attr('name')]))
-						opt.attr('selected', 'selected');
-					that.append(opt);
-				}
-			},
-			error: function(err) {
-				alert(JSON.stringify(err));
-			}
+		that.find('option').each(function() {
+			//console.log($(this).val()+' - '+data[that.attr('name')]+' -- '+that.attr('name')+ '***'+JSON.stringify(data));
+			if (jQuery.inArray($(this).val(), data[that.attr('name')]))
+				$(this).attr('selected', 'selected');
 		});
-		
 	});
+	
 }
 
 function clearData(form) {
@@ -237,9 +224,12 @@ function clearData(form) {
 	form.find('textarea').each(function() {
         $(this).val("");
     });
-	form.find('select').each(function() {
-		$(this).find('option').remove();
+	form.find('select option').each(function() {
+		$(this).removeAttr('selected');
 	});
+	// form.find('select').each(function() {
+	// 	$(this).find('option').remove();
+	// });
 }
 
 
@@ -268,7 +258,30 @@ function addSelectField(group, field) {
         .attr('name', field.name);
 	if (typeof field.multiple !== 'undefined' && field.multiple == true)
 		v.attr('multiple', 'multiple');
-	v.attr('src', field.src);
+	//v.attr('src', field.src);
+	v.append('<option/>');
+
+	//chargement de la liste
+	if (field.src) {
+		$.ajax({
+			dataType: "json",
+			type: "POST",
+			url: field.src,
+			success: function(data) {
+				for (var o in data) {
+					var opt = $('<option/>');
+					opt.attr('value', data[o].value);
+					opt.text(data[o].text);
+					// if (jQuery.inArray(data[o].value, data[that.attr('name')]))
+					// 	opt.attr('selected', 'selected');
+					v.append(opt);
+				}
+			},
+			error: function(err) {
+				alert(JSON.stringify(err));
+			}
+		});
+	}
 }
 
 function addTextareaField(group, field) {
