@@ -144,12 +144,7 @@ function fail(jqXHR) {
 }
 
 // Data Management
-
 function getDataName(name) {
-	// var n = name.indexOf('[');
-	// if (n != -1) {
-	// 	name = name.substr(0, n)+'.'+name.substr(n+1, (name.length-n-2));
-	// }
 	var n = name.indexOf('.');
 	if (n != -1) {
 		name = name.substr(0,n)+'['+name.substr(n+1, (name.length-n))+']';
@@ -205,9 +200,9 @@ function addDefault(form, data) {
 	form.find('select').each(function() {
 		var that = $(this);
 		that.find('option').each(function() {
-			//console.log($(this).val()+' - '+data[that.attr('name')]+' -- '+that.attr('name')+ '***'+JSON.stringify(data));
-			if (jQuery.inArray($(this).val(), data[that.attr('name')]))
+			if (-1 != jQuery.inArray($(this).val(), data[that.attr('name')])) {
 				$(this).attr('selected', 'selected');
+			}
 		});
 	});
 	
@@ -227,9 +222,6 @@ function clearData(form) {
 	form.find('select option').each(function() {
 		$(this).removeAttr('selected');
 	});
-	// form.find('select').each(function() {
-	// 	$(this).find('option').remove();
-	// });
 }
 
 
@@ -258,7 +250,6 @@ function addSelectField(group, field) {
         .attr('name', field.name);
 	if (typeof field.multiple !== 'undefined' && field.multiple == true)
 		v.attr('multiple', 'multiple');
-	//v.attr('src', field.src);
 	v.append('<option/>');
 
 	//chargement de la liste
@@ -272,8 +263,6 @@ function addSelectField(group, field) {
 					var opt = $('<option/>');
 					opt.attr('value', data[o].value);
 					opt.text(data[o].text);
-					// if (jQuery.inArray(data[o].value, data[that.attr('name')]))
-					// 	opt.attr('selected', 'selected');
 					v.append(opt);
 				}
 			},
