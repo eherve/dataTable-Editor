@@ -250,7 +250,8 @@ function addSelectField(group, field) {
         .attr('name', field.name);
 	if (typeof field.multiple !== 'undefined' && field.multiple == true)
 		v.attr('multiple', 'multiple');
-	v.append('<option/>');
+	else
+		v.append('<option/>');
 
 	//chargement de la liste
 	if (field.src) {
