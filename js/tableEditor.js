@@ -14,23 +14,29 @@ var Editor = $.fn.dataTable.Editor = function(config) {
   this.closeText = config.closeText || "close";
   this.validateText = config.validateText || "validate";
 
-  this.formValidation = config.formValidation || function() { return true; };
+  this.formValidation = config.formValidation ||
+    function(data, callback) { callback(); };
 
   _buildModal.call(this);
   this.create = _create.bind(this);
   this.edit = _edit.bind(this);
   this.remove = _remove.bind(this);
-  this.error = _setError.bind(this);
+  this.setError = _setError.bind(this);
+  this.clearErrors = _clearErrors.bind(this);
 }
 
-function _resetErrorField(form) {
-  form.find('[id^=error]').each(function() {
-    $(this).html("");
-  });
+function _setError(message) {
+  this.errorBlock.text(message);
+  if (message) this.errorBlock.fadeIn();
+  else this.errorBlock.fadeOut();
 }
 
-function _setError(field, message) {
-  this.form.find('#error'+field).html(message);
+function _clearErrors() {
+  this.errorBlock.text("");
+  this.errorBlock.fadeOut();
+  for (var index = 0; index < this.fields.length; ++index) {
+    this.fields[index] && (this.fields[index].error = undefined);
+  }
 }
 
 // Modal
@@ -44,8 +50,7 @@ function _buildModal() {
   _buildModalFooter.call(self);
   self.modal.on('hide', function() {
     self.validateButton.off('click');
-    _resetErrorField(self.form);
-    self.errorBlock.fadeOut();
+    self.clearErrors();
     clearData.call(self);
   });
 }
@@ -83,9 +88,14 @@ function _create() {
   loadFields.call(self, function() {
     self.validateButton.on('click', function() {
       var data = retrieveData.call(self);
-      if (self.formValidation.call(self, data))
-      $.ajax({ type: self.method, url: self.url, data: data })
-      .done(self.done.bind(self)).fail(self.fail.bind(self));
+      validateFields.call(self, function(valid) {
+        if (!valid) return;
+        self.formValidation.call(self, data, function(err) {
+          if (err) return self.setError(err);
+          $.ajax({ type: self.method, url: self.url, data: data })
+            .done(self.done.bind(self)).fail(self.fail.bind(self));
+        });
+      });
     });
     self.modal.modal();
   });
@@ -96,13 +106,17 @@ function _edit(selectedRowData) {
   loadFields.call(self, function() {
     setData.call(self, selectedRowData);
     self.validateButton.on('click', function() {
-      var data = retrieveData.call(self);
-      if (self.formValidation.call(self, data)) {
-        if (self.idField && selectedRowData)
-      data.id = selectedRowData[self.idField];
-    $.ajax({ type: self.method, url: self.url, data: data })
-      .done(self.done.bind(self)).fail(self.fail.bind(self));
-      }
+      var data = retrieveData.call(self)
+      validateFields.call(self, function(valid) {
+        if (!valid) return;
+        self.formValidation.call(self, data, function(err) {
+          if (err) return self.setError(err);
+          if (self.idField && selectedRowData)
+            data.id = selectedRowData[self.idField];
+          $.ajax({ type: self.method, url: self.url, data: data })
+            .done(self.done.bind(self)).fail(self.fail.bind(self));
+        });
+      });
     });
     self.modal.modal();
   });
@@ -132,8 +146,8 @@ function done() {
 
 function fail(jqXHR) {
   if (jqXHR.status == 403) {
-    this.error.text(jqXHR.responseText);
-    this.errorBlock.fadeIn();
+    console.log(jqXHR);
+    this.setError(jqXHR.responseText);
   } else {
     document.open();
     document.write(jqXHR.responseText);
@@ -161,10 +175,27 @@ function addFieldsToForm(form, fields) {
 function loadFields(callback) {
   var index = 0;
   var fields = this.fields;
-  (function exec() {
+  (function exec(err) {
+    if (err) console.error(err);
     if (index == fields.length) return callback();
     var field = fields[index++];
     if (field && field.isLoaded() === false) field.load(exec);
+    else exec();
+  })();
+}
+
+function validateFields(callback) {
+  var index = 0;
+  var fields = this.fields;
+  var valid = true;
+  (function exec() {
+    if (index == fields.length) return callback(valid);
+    var field = fields[index++];
+    if (field) field.validate(function(err) {
+      if (err) valid = false;
+      field.error = err;
+      exec();
+    });
     else exec();
   })();
 }
@@ -235,6 +266,17 @@ function Field(config) {
     get data() {
       if (this.type == 'label') return;
       return this.component.getData();
+    },
+    validate: function(callback) {
+      if (this.type == 'label' || typeof this.options.validator != 'function')
+        return callback();
+      this.options.validator(this.data, callback);
+    },
+    set error(err) {
+      if (this.type != 'label' && this.component && this.component.error) {
+        if (err) this.component.error.html(err);
+        else this.component.error.html('');
+      }
     },
     isLoaded: function() {
       return this.component.loaded == undefined ||
@@ -415,14 +457,6 @@ $.fn.dataTableExt.oApi.fnReloadAjax = function(oSettings, sNewSource) {
   }
   this.fnClearTable(this);
   this.oApi._fnProcessingDisplay(oSettings, true);
-  $.getJSON(oSettings.sAjaxSource, null, $.proxy(function(json) {
-    for (var i=0 ; i<json.aaData.length ; i++) {
-      this.oApi._fnAddData(oSettings, json.aaData[i]);
-    }
-    oSettings.aiDisplay = oSettings.aiDisplayMaster.slice();
-    this.fnDraw(this);
-    this.oApi._fnProcessingDisplay(oSettings, false);
-  }, this));
 }
 
 /*
