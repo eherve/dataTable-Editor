@@ -146,7 +146,6 @@ function done() {
 
 function fail(jqXHR) {
   if (jqXHR.status == 403) {
-    console.log(jqXHR);
     this.setError(jqXHR.responseText);
   } else {
     document.open();
