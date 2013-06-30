@@ -386,11 +386,16 @@ function buildSelectComponent(component, label, options) {
       return this.input.find('option:selected').removeAttr('selected')
     var equals = getEqualsFunction(options);
     this.input.find('option').each(function() {
-      for (var index = 0; index < data.length; ++index) {
-        if (equals($(this).attr('key'), data[index])) {
-          return $(this).attr('selected', 'selected');
-        }
-      }
+		if (typeof data == "object") {
+			for (var index = 0; index < data.length; ++index) {
+				if (equals($(this).attr('key'), data[index])) {
+					return $(this).attr('selected', 'selected');
+				}
+			}
+		} else {
+			if (equals($(this).attr('key'), data)) 
+				return $(this).attr('selected', 'selected');
+		}
       $(this).removeAttr('selected');
     });
   };
@@ -403,8 +408,8 @@ function buildSelectComponent(component, label, options) {
   }
   component.loaded = false;
   component.load = function(callback) {
-    if (options.src) {
-      loadValues(options.src, function(err, data) {
+    if (options.src || options.values) {
+      loadValues(options.src || options.values , function(err, data) {
         if (err) return callback(err);
         setSelectValues(component.input, data);
         component.loaded = true;
@@ -435,7 +440,8 @@ function setSelectValues(select, data) {
 
 function loadValues(src, callback) {
   if (typeof src == 'string') loadAjaxValues(src, callback);
-  else if (src == 'function') src(callback);
+  else if (typeof src == 'function') src(callback);
+  else if (typeof src == 'object') callback(null, src);
   else console.error("Load field value unknown source type:", src);
 }
 
