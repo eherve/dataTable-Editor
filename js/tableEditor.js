@@ -457,11 +457,7 @@ function loadAjaxValues(url, callback) {
  */
 
 $.fn.dataTableExt.oApi.fnReloadAjax = function(oSettings, sNewSource) {
-  if (typeof sNewSource != 'undefined') {
-    oSettings.sAjaxSource = sNewSource;
-  }
-  this.fnClearTable(this);
-  this.oApi._fnProcessingDisplay(oSettings, true);
+  this.fnDraw();
 }
 
 /*
