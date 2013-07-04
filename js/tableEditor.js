@@ -94,7 +94,7 @@ function _buildModalFooter() {
 
 function _create() {
   var self = this;
-  loadFields.call(self, function() {
+  loadFields.call(self, null, function() {
     self.validateButton.on('click', function() {
       var data = retrieveData.call(self);
       validateFields.call(self, function(valid) {
@@ -112,7 +112,7 @@ function _create() {
 
 function _edit(selectedRowData) {
   var self = this;
-  loadFields.call(self, function() {
+  loadFields.call(self, selectedRowData, function() {
     setData.call(self, selectedRowData);
     self.validateButton.on('click', function() {
       var data = retrieveData.call(self)
@@ -133,7 +133,7 @@ function _edit(selectedRowData) {
 
 function _remove(selectedRowsData) {
   var self = this;
-  loadFields.call(self, function() {
+  loadFields.call(self, selectedRowsData, function() {
     self.validateButton.on('click', function() {
       var data = { ids: [] };
       if (self.idField && selectedRowsData)
@@ -180,14 +180,14 @@ function addFieldsToForm(form, fields) {
   }
 }
 
-function loadFields(callback) {
+function loadFields(selected, callback) {
   var index = 0;
   var fields = this.fields;
   (function exec(err) {
     if (err) console.error(err);
     if (index == fields.length) return callback();
     var field = fields[index++];
-    if (field && field.isLoaded() === false) field.load(exec);
+    if (field && field.isLoaded() === false) field.load(selected, exec);
     else exec();
   })();
 }
@@ -290,8 +290,8 @@ function Field(config) {
       return this.component.loaded == undefined ||
         this.component.loaded === true;
     },
-    load: function(callback) {
-      if (this.component.load) this.component.load(callback);
+    load: function(selected, callback) {
+      if (this.component.load) this.component.load(selected, callback);
       else callback();
     },
     clear: function() { this.data = undefined; }
@@ -395,7 +395,7 @@ function buildSelectComponent(component, label, options) {
       return this.input.find('option:selected').removeAttr('selected')
     var equals = getEqualsFunction(options);
     this.input.find('option').each(function() {
-		if (typeof data == "object") {
+		if (typeof data == "object" && data.length != undefined) {
 			for (var index = 0; index < data.length; ++index) {
 				if (equals($(this).attr('key'), data[index])) {
 					return $(this).attr('selected', 'selected');
@@ -416,9 +416,9 @@ function buildSelectComponent(component, label, options) {
     return data;
   }
   component.loaded = false;
-  component.load = function(callback) {
+  component.load = function(selected, callback) {
     if (options.src || options.values) {
-      loadValues(options.src || options.values , function(err, data) {
+      loadValues(selected, options.src || options.values , function(err, data) {
         if (err) return callback(err);
         setSelectValues(component.input, data);
         component.loaded = true;
@@ -447,9 +447,9 @@ function setSelectValues(select, data) {
   }
 }
 
-function loadValues(src, callback) {
+function loadValues(selected, src, callback) {
   if (typeof src == 'string') loadAjaxValues(src, callback);
-  else if (typeof src == 'function') src(callback);
+  else if (typeof src == 'function') src(selected, callback);
   else if (typeof src == 'object') callback(null, src);
   else console.error("Load field value unknown source type:", src);
 }
