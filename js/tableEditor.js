@@ -3,6 +3,15 @@ var Editor = $.fn.dataTable.Editor = function(config) {
   if (!config.domTable) return alert("Missing editor domTable !");
 
   this.domTable = config.domTable;
+  if ('boolean' == typeof config.isEnabled)
+    this.isEnabled = function() { return config.isEnabled; };
+  else if ('string' == typeof config.isEnabled)
+    this.isEnabled = function() {
+      return config.isEnabled.toUpperCase() == 'TRUE'; };
+  else if ('function' == typeof config.isEnabled)
+    this.isEnabled = config.isEnabled;
+  else
+    this.isEnabled = function() { return true; };
   this.method = config.method || "POST";
   this.url = config.url || "";
   this.idField = config.idField;
@@ -393,7 +402,7 @@ function buildSelectComponent(component, label, options) {
 				}
 			}
 		} else {
-			if (equals($(this).attr('key'), data)) 
+			if (equals($(this).attr('key'), data))
 				return $(this).attr('selected', 'selected');
 		}
       $(this).removeAttr('selected');
@@ -446,7 +455,7 @@ function loadValues(src, callback) {
 }
 
 function loadAjaxValues(url, callback) {
-  $.ajax({ dataType: "json", type: "POST", url: url,
+  $.ajax({ dataType: "json", type: "GET", url: url,
     success: function(data) { callback(null, data); },
     error: function(err) { callback(err); }
   });
@@ -491,14 +500,14 @@ $.extend(true, "remove_button", TableTools.buttonBase, {
 });
 
 function ActifSelectSingle(button, config, rows) {
-  var oneSelected = this.fnGetSelected().length == 1;
-  if (oneSelected) $(button).removeClass('disabled');
+  if (config.editor.isEnabled() && this.fnGetSelected().length == 1)
+    $(button).removeClass('disabled');
   else $(button).addClass('disabled');
 }
 
 function ActifSelect(button, config, rows) {
-  var oneSelected = this.fnGetSelected().length > 0;
-  if (oneSelected) $(button).removeClass('disabled');
+  if (config.editor.isEnabled() && this.fnGetSelected().length > 0)
+    $(button).removeClass('disabled');
   else $(button).addClass('disabled');
 }
 
