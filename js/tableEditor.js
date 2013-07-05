@@ -440,6 +440,8 @@ function getEqualsFunction(options) {
 }
 
 function setSelectValues(select, data) {
+  select.empty();
+  if (select.attr('multiple') == null) select.append('<option/>');
   if (!data) return;
   for (var index = 0; index < data.length; ++index) {
     var d = data[index];
