@@ -421,7 +421,7 @@ function buildSelectComponent(component, label, options) {
       loadValues(selected, options.src || options.values , function(err, data) {
         if (err) return callback(err);
         setSelectValues(component.input, data);
-        component.loaded = true;
+        component.loaded = true && options.alwaysReload !== true;
         callback();
       });
     } else callback();
