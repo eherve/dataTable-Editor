@@ -122,6 +122,7 @@ function _edit(selectedRowData) {
           if (err) return self.setError(err);
           if (self.idField && selectedRowData)
             data.id = selectedRowData[self.idField];
+			console.log(data);
           $.ajax({ type: self.method, url: self.url, data: data })
             .done(self.done.bind(self)).fail(self.fail.bind(self));
         });
@@ -168,7 +169,7 @@ function fail(jqXHR) {
 function buildFields(fieldsConfig) {
   var fields = [];
   for (var index = 0; index < fieldsConfig.length; ++index) {
-    fields.push(new Field(fieldsConfig[index]));
+	  fields.push(new Field(fieldsConfig[index]));
   }
   return fields;
 }
@@ -176,7 +177,7 @@ function buildFields(fieldsConfig) {
 function addFieldsToForm(form, fields) {
   for(var index = 0; index < fields.length; ++index) {
     var field = fields[index];
-    if (field) field.component.html.appendTo(form);
+      if (field && !field.error) field.component.html.appendTo(form);
   }
 }
 
@@ -210,9 +211,9 @@ function validateFields(callback) {
 
 function retrieveData() {
   var data = {};
-  for (var index = 0; index < this.fields.length; ++index) {
+  for (var index = 0; index <= this.fields.length; ++index) {
     var field = this.fields[index];
-    if (field == undefined || field.type == 'label') continue;
+    if (field == undefined || field.type == 'label' || field.name == undefined) continue;
     addToData(data, field.name, field.data);
   }
   return data;
@@ -259,7 +260,8 @@ function Field(config) {
   var component = buildFieldComponent(type, label, options);
   return {
     get type() { return type; },
-    get label() { return label; },
+    get error() { return component == null; },
+	get label() { return label; },
     get name() { return name; },
     get options() { return options; },
     get component() { return component; },
@@ -287,11 +289,11 @@ function Field(config) {
       }
     },
     isLoaded: function() {
-      return this.component.loaded == undefined ||
-        this.component.loaded === true;
+		return !this.error && (this.component.loaded == undefined ||
+							   this.component.loaded === true);
     },
     load: function(selected, callback) {
-      if (this.component.load) this.component.load(selected, callback);
+      if (!this.error && this.component.load) this.component.load(selected, callback);
       else callback();
     },
     clear: function() { this.data = undefined; }
@@ -315,18 +317,33 @@ function buildFieldComponent(type, label, options) {
     buildLabelComponent(component, label);
   } else if (type == 'input') {
     if (options.type == 'text') {
-      buildTextComponent(component, label);
+		buildTextComponent(component, label, options.attr);
     } else if (options.type == 'password') {
       buildPasswordComponent(component, label);
     } else if (options.type == 'checkbox') {
       buildCheckboxComponent(component, label);
     } else if (options.type == 'textarea') {
-      buildTextareaComponent(component, label);
+		buildTextareaComponent(component, label, options.attr);
     } else if (options.type == 'select') {
       buildSelectComponent(component, label, options);
     } else return console.error("Field input type", options.type, "not managed !");
+	  setComponentAttr(component.input, options.attr);
+  } else if (type == 'div') {
+	  buildDivComponent(component, options);
+	  setComponentAttr(component.input, options);
+  } else if (type == 'button') {
+	  buildButtonComponent(component, label, options);
+	  setComponentAttr(component.input, options.attr);
   } else return console.error("Field type", type, "not managed !");
   return component;
+}
+
+function setComponentAttr(component, attrs) {
+	if (attrs) {
+		for (var opt in attrs) {
+			component.attr(opt, attrs[opt]);
+		}
+	}
 }
 
 function buildLabelComponent(component, label) {
@@ -335,7 +352,24 @@ function buildLabelComponent(component, label) {
       .appendTo(component.html);
 }
 
-function buildTextComponent(component, label) {
+function buildButtonComponent(component, label, options) {
+	var ctl = $('<div class="controls"/>').appendTo(component.html);
+	component.input = $('<button />').text(label).appendTo(ctl);
+	component.input.bind('click', function() {
+		options.onclick();
+		return false;
+	});
+}
+
+function buildDivComponent(component, options) {
+	var ctl = $('<div class="controls"/>').appendTo(component.html);
+	component.input = $('<div />').appendTo(ctl);
+	component.clear = function() {
+		console.log('clearComponent');
+	}
+}
+
+function buildTextComponent(component, label, attrs) {
   if (label)
     $('<label class="control-label"/>').text(label)
       .appendTo(component.html);
