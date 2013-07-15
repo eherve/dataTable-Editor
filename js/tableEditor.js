@@ -122,8 +122,7 @@ function _edit(selectedRowData) {
           if (err) return self.setError(err);
           if (self.idField && selectedRowData)
             data.id = selectedRowData[self.idField];
-			console.log(data);
-          $.ajax({ type: self.method, url: self.url, data: data })
+			$.ajax({ type: self.method, url: self.url, data: JSON.stringify(data), contentType: "application/json; charset=utf-8" })
             .done(self.done.bind(self)).fail(self.fail.bind(self));
         });
       });
@@ -226,7 +225,7 @@ function addToData(data, key, value) {
     var base = key.substr(0, index);
     key = key.substr(index + 1);
     var element = obj[base];
-    if (element == undefined) element = obj[base] = {};
+      if (element == undefined) element = obj[base] = {};
     obj = element;
   }
   obj[key] = value;
@@ -296,7 +295,11 @@ function Field(config) {
       if (!this.error && this.component.load) this.component.load(selected, callback);
       else callback();
     },
-    clear: function() { this.data = undefined; }
+    clear: function() { 
+		this.data = undefined; 
+		if (typeof this.component.clear == 'function')
+			this.component.clear();
+	}
   };
 }
 
@@ -362,10 +365,10 @@ function buildButtonComponent(component, label, options) {
 }
 
 function buildDivComponent(component, options) {
-	var ctl = $('<div class="controls"/>').appendTo(component.html);
-	component.input = $('<div />').appendTo(ctl);
+	//var ctl = $('<div class="controls"/>').appendTo(component.html);
+	component.input = $('<div />').appendTo(component.html);
 	component.clear = function() {
-		console.log('clearComponent');
+		component.input.html('');
 	}
 }
 
