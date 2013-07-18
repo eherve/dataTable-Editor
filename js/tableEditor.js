@@ -26,6 +26,12 @@ var Editor = $.fn.dataTable.Editor = function(config) {
   this.formValidation = config.formValidation ||
     function(data, callback) { callback(); };
 
+  this.action = config.action || function(data, next) {
+    $.ajax({ type: this.method, url: this.url, data: data })
+      .done(function() { next(); })
+      .fail(function(err) { next(err); });
+  }
+
   _buildModal.call(this);
   this.create = _create.bind(this);
   this.edit = _edit.bind(this);
@@ -101,8 +107,7 @@ function _create() {
         if (!valid) return;
         self.formValidation.call(self, data, function(err) {
           if (err) return self.setError(err);
-          $.ajax({ type: self.method, url: self.url, data: data })
-            .done(self.done.bind(self)).fail(self.fail.bind(self));
+          self.action(data, finishedHandler.bind(self));
         });
       });
     });
@@ -122,9 +127,7 @@ function _edit(selectedRowData) {
           if (err) return self.setError(err);
           if (self.idField && selectedRowData)
             data.id = selectedRowData[self.idField];
-			console.log(data);
-          $.ajax({ type: self.method, url: self.url, data: data })
-            .done(self.done.bind(self)).fail(self.fail.bind(self));
+          self.action(data, finishedHandler.bind(self));
         });
       });
     });
@@ -140,8 +143,7 @@ function _remove(selectedRowsData) {
       if (self.idField && selectedRowsData)
       for (var index = 0; index < selectedRowsData.length; ++index)
       data.ids.push(selectedRowsData[index][self.idField]);
-    $.ajax({ type: self.method, url: self.url, data: data })
-      .done(self.done.bind(self)).fail(self.fail.bind(self));
+          self.action(data, finishedHandler.bind(self));
     });
     self.modal.modal();
   });
@@ -149,8 +151,14 @@ function _remove(selectedRowsData) {
 
 // Request over method
 
+function finishedHandler(err) {
+  if (err) this.fail(err);
+  else this.done();
+}
+
 function done() {
   this.modal.modal('hide');
+  TableTools.fnGetInstance(this.domTable.substring(1)).fnSelectNone();
   $(this.domTable).dataTable().fnReloadAjax();
 }
 
@@ -536,13 +544,15 @@ $.extend(true, "remove_button", TableTools.buttonBase, {
 });
 
 function ActifSelectSingle(button, config, rows) {
-  if (config.editor.isEnabled() && this.fnGetSelected().length == 1)
+  if (config.editor.isEnabled(this.fnGetSelectedData(), $(button)) &&
+      this.fnGetSelected().length == 1)
     $(button).removeClass('disabled');
   else $(button).addClass('disabled');
 }
 
 function ActifSelect(button, config, rows) {
-  if (config.editor.isEnabled() && this.fnGetSelected().length > 0)
+  if (config.editor.isEnabled(this.fnGetSelectedData(), $(button)) &&
+      this.fnGetSelected().length > 0)
     $(button).removeClass('disabled');
   else $(button).addClass('disabled');
 }
