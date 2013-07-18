@@ -270,12 +270,16 @@ function Field(config) {
   return {
     get type() { return type; },
     get error() { return component == null; },
-	get label() { return label; },
+    get label() { return label; },
     get name() { return name; },
     get options() { return options; },
     get component() { return component; },
     set data(data) {
       if (this.type == 'label' || this.name == undefined) return;
+      if ('function' == typeof options.enabled) {
+        if (!options.enabled(data)) component.input.attr('disabled', "disabled");
+        else component.input.removeAttr('disabled');
+      }
       var chunk = this.name.split('.'), val = data;
       for (var index = 0; index < chunk.length && val != undefined; ++index) {
         val = val[chunk[index]];
@@ -334,7 +338,7 @@ function buildFieldComponent(type, label, options) {
     } else if (options.type == 'password') {
       buildPasswordComponent(component, label);
     } else if (options.type == 'checkbox') {
-      buildCheckboxComponent(component, label);
+      buildCheckboxComponent(component, label, options);
     } else if (options.type == 'textarea') {
 		buildTextareaComponent(component, label, options.attr);
     } else if (options.type == 'select') {
@@ -348,6 +352,10 @@ function buildFieldComponent(type, label, options) {
 	  buildButtonComponent(component, label, options);
 	  setComponentAttr(component.input, options.attr);
   } else return console.error("Field type", type, "not managed !");
+  if ('boolean' == typeof options.enabled) {
+    if (options.enabled === false) component.input.attr('disabled', "disabled");
+    else component.input.removeAttr('disabled');
+  }
   return component;
 }
 
