@@ -1,103 +1,106 @@
+/*
+ * Editor
+ */
+
 var Editor = $.fn.dataTable.Editor = function(config) {
   config = config || {};
+  var self = this;
+  // dom table
   if (!config.domTable) return alert("Missing editor domTable !");
-
-  this.domTable = config.domTable;
+  self.domTable = config.domTable;
+  // enabled
   if ('boolean' == typeof config.isEnabled)
-    this.isEnabled = function() { return config.isEnabled; };
+    self.isEnabled = function() { return config.isEnabled; };
   else if ('string' == typeof config.isEnabled)
-    this.isEnabled = function() {
+    self.isEnabled = function() {
       return config.isEnabled.toUpperCase() == 'TRUE'; };
   else if ('function' == typeof config.isEnabled)
-    this.isEnabled = config.isEnabled;
+    self.isEnabled = config.isEnabled;
   else
-    this.isEnabled = function() { return true; };
-  this.method = config.method || "POST";
-  this.url = config.url || "";
-  this.idField = config.idField;
-  this.done = config.done || done;
-  this.fail = config.fail || fail;
-
-  this.title = config.title || "";
-  this.fields = buildFields(config.fields || []);
-  this.closeText = config.closeText || "close";
-  this.validateText = config.validateText || "validate";
-
-  this.formValidation = config.formValidation ||
-    function(data, callback) { callback(); };
-
-  this.action = config.action || function(data, next) {
-    $.ajax({ type: this.method, url: this.url, data: JSON.stringify(data),
-      contentType: "application/json; charset=utf-8" })
-      .done(function() { next(); })
-      .fail(function(err) { next(err); });
-  }
-
-  _buildModal.call(this);
-  this.create = _create.bind(this);
-  this.edit = _edit.bind(this);
-  this.remove = _remove.bind(this);
-  this.setError = _setError.bind(this);
-  this.clearErrors = _clearErrors.bind(this);
-}
-
-function _setError(message) {
-  this.errorBlock.text(message);
-  if (message) this.errorBlock.fadeIn();
-  else this.errorBlock.fadeOut();
-}
-
-function _clearErrors() {
-  this.errorBlock.text("");
-  this.errorBlock.fadeOut();
-  for (var index = 0; index < this.fields.length; ++index) {
-    this.fields[index] && (this.fields[index].error = undefined);
+    self.isEnabled = function() { return true; };
+  // method
+  self.method = config.method || "POST";
+  // url
+  self.url = config.url || "";
+  // id field
+  self.idField = config.idField;
+  // form validation
+  self.formValidation = 'function' == typeof config.formValidation ?
+    config.formValidation : function(data, callback) { callback(); };
+  // action
+  self.done = config.done || done;
+  self.fail = config.fail || fail;
+  self.action = 'function' == typeof config.action ? config.action
+    : function(data, next) {
+      $.ajax({ type: self.method, url: self.url, data: JSON.stringify(data),
+        contentType: "application/json; charset=utf-8" })
+        .done(function() { next(); })
+        .fail(function(err) { next(err); });
+    }
+  // fields
+  self.fields = [];
+  var size = config.fields && config.fields.length != undefined ?
+    config.fields.length : 0;
+  for (var index = 0; index < config.fields.length; ++index)
+    self.fields.push(new Field(config.fields[index]));
+  // modal
+  buildModal.call(self, config);
+  // button actions
+  self.create = _create.bind(self);
+  self.edit = _edit.bind(self);
+  self.remove = _remove.bind(self);
+  self.setError = function(err) {
+    self.errorBlock.text(err || '');
+    if (err) self.errorBlock.fadeIn();
+    else self.errorBlock.fadeOut();
   }
 }
 
 // Modal
 
-function _buildModal() {
+function buildModal(config) {
   var self = this;
   self.modal = $('<div class="modal fade", tabindex="-1", role="dialog",' +
-      ' aria-hidden="true"/>').appendTo($(this.domTable));
-  _buildModalHeader.call(self);
-  _buildModalBody.call(self);
-  _buildModalFooter.call(self);
+      ' aria-hidden="true"/>').appendTo($(self.domTable));
+  // header
+  var modalHeader = $('<div class="modal-header"/>').appendTo(self.modal);
+  $('<button type="button" class="close" data-dismiss="modal"' +
+      ' aria-hidden="true">&times</button>').appendTo(modalHeader);
+  $('<h3/>').appendTo(modalHeader).text(config.title || '');
+  // body
+  var modalBody = $('<div class="modal-body"/>').appendTo(self.modal);
+  self.form = $('<form class="form-horizontal"/>')
+    .appendTo(modalBody).attr('method', self.method).attr('url', self.url);
+  // fields
+  for(var index = 0; index < self.fields.length; ++index) {
+    var field = self.fields[index];
+      if (field && !field.error) field.component.html.appendTo(self.form);
+  }
+  self.errorBlock = $('<div class="alert alert-error hide">')
+    .appendTo(modalBody);
+  self.error = $('<span id="error-span"/>').appendTo(self.errorBlock);
+  // footer
+  var modalFooter = $('<div class="modal-footer"/>').appendTo(self.modal);
+  $('<button class="btn", data-dismiss="modal", aria-hidden="true"/>')
+    .appendTo(modalFooter).text(config.closeText || '');
+  self.validateButton =
+    $('<button class="btn btn-primary"/>').appendTo(modalFooter)
+    .text(config.validateText || '');
   self.modal.on('hide', function() {
     self.validateButton.off('click');
-    self.clearErrors();
-    clearData.call(self);
+    self.errorBlock.text("");
+    self.errorBlock.fadeOut();
+    for (var index = 0; index < self.fields.length; ++index) {
+      var field = self.fields[index];
+      if (field) {
+        field.setError();
+        field.clear();
+      }
+    }
   });
 }
 
-function _buildModalHeader() {
-  var modalHeader = $('<div class="modal-header"/>').appendTo(this.modal);
-  $('<button type="button" class="close" data-dismiss="modal"' +
-      ' aria-hidden="true">&times</button>').appendTo(modalHeader);
-  $('<h3/>').appendTo(modalHeader).text(this.title || '');
-}
-
-function _buildModalBody() {
-  var modalBody = $('<div class="modal-body"/>').appendTo(this.modal);
-  this.form = $('<form class="form-horizontal"/>')
-    .appendTo(modalBody).attr('method', this.method).attr('url', this.url);
-  addFieldsToForm(this.form, this.fields);
-  this.errorBlock = $('<div class="alert alert-error hide">')
-    .appendTo(modalBody);
-  this.error = $('<span id="error-span"/>').appendTo(this.errorBlock);
-}
-
-function _buildModalFooter() {
-  var modalFooter = $('<div class="modal-footer"/>').appendTo(this.modal);
-  $('<button class="btn", data-dismiss="modal", aria-hidden="true"/>')
-    .appendTo(modalFooter).text(this.closeText);
-  this.validateButton =
-    $('<button class="btn btn-primary"/>').appendTo(modalFooter)
-    .text(this.validateText);
-}
-
-// Execute Methods
+// Button Actions
 
 function _create() {
   var self = this;
@@ -119,15 +122,15 @@ function _create() {
 function _edit(selectedRowData) {
   var self = this;
   loadFields.call(self, selectedRowData, function() {
-    setData.call(self, selectedRowData);
+    for (var index = 0; index < self.fields.length; ++index)
+      self.fields[index] && (self.fields[index].setData(selectedRowData));
     self.validateButton.on('click', function() {
       var data = retrieveData.call(self)
       validateFields.call(self, function(valid) {
         if (!valid) return;
         self.formValidation.call(self, data, function(err) {
           if (err) return self.setError(err);
-          if (self.idField && selectedRowData)
-            data.id = selectedRowData[self.idField];
+          if (self.idField && selectedRowData) data.id = selectedRowData[self.idField];
           self.action(data, finishedHandler.bind(self));
         });
       });
@@ -142,12 +145,63 @@ function _remove(selectedRowsData) {
     self.validateButton.on('click', function() {
       var data = { ids: [] };
       if (self.idField && selectedRowsData)
-      for (var index = 0; index < selectedRowsData.length; ++index)
-      data.ids.push(selectedRowsData[index][self.idField]);
-          self.action(data, finishedHandler.bind(self));
+        for (var index = 0; index < selectedRowsData.length; ++index)
+          data.ids.push(selectedRowsData[index][self.idField]);
+      self.action(data, finishedHandler.bind(self));
     });
     self.modal.modal();
   });
+}
+
+function loadFields(selected, callback) {
+  var index = 0;
+  var fields = this.fields;
+  (function exec(err) {
+    if (err) console.error(err);
+    if (index >= fields.length) return callback();
+    var field = fields[index++];
+    if (field && field.isLoaded() === false) field.load(selected, exec);
+    else exec();
+  })();
+}
+
+function validateFields(callback) {
+  var index = 0;
+  var fields = this.fields;
+  var valid = true;
+  (function exec() {
+    if (index >= fields.length) return callback(valid);
+    var field = fields[index++];
+    if (field) field.validate(function(err) {
+      if (err) valid = false;
+      field.setError(err);
+      exec();
+    });
+    else exec();
+  })();
+}
+
+function retrieveData() {
+  var data = {};
+  for (var index = 0; index <= this.fields.length; ++index) {
+    var field = this.fields[index];
+    if (field && field.getData != undefined)
+      addToData(data, field.name, field.getData());
+  }
+  return data;
+}
+
+function addToData(data, key, value) {
+  var obj = data;
+  var index = -1;
+  while ((index = key.indexOf('.')) != -1) {
+    var base = key.substr(0, index);
+    key = key.substr(index + 1);
+    var element = obj[base];
+      if (element == undefined) element = obj[base] = {};
+    obj = element;
+  }
+  obj[key] = value;
 }
 
 // Request over method
@@ -166,6 +220,21 @@ function done() {
 function fail(jqXHR) {
   if (jqXHR.status == 403) {
     this.setError(jqXHR.responseText);
+  } else if (jqXHR.status == 422) {
+    try {
+      var errors = JSON.parse(jqXHR.responseText);
+      for (var index = 0; index < this.fields.length; ++index) {
+        var field = this.fields[index];
+        if (field) {
+          field.setError(errors[field.name]);
+          delete errors[field.name];
+        }
+      }
+      for (var key in errors) console.log("Undisplayed error:", key, "=", errors[key]);
+    } catch(err) {
+      console.error(err);
+      this.setError(jqXHR.responseText);
+    }
   } else {
     document.open();
     document.write(jqXHR.responseText);
@@ -173,314 +242,205 @@ function fail(jqXHR) {
   }
 }
 
-// Field Management
-
-function buildFields(fieldsConfig) {
-  var fields = [];
-  for (var index = 0; index < fieldsConfig.length; ++index) {
-	  fields.push(new Field(fieldsConfig[index]));
-  }
-  return fields;
-}
-
-function addFieldsToForm(form, fields) {
-  for(var index = 0; index < fields.length; ++index) {
-    var field = fields[index];
-      if (field && !field.error) field.component.html.appendTo(form);
-  }
-}
-
-function loadFields(selected, callback) {
-  var index = 0;
-  var fields = this.fields;
-  (function exec(err) {
-    if (err) console.error(err);
-    if (index == fields.length) return callback();
-    var field = fields[index++];
-    if (field && field.isLoaded() === false) field.load(selected, exec);
-    else exec();
-  })();
-}
-
-function validateFields(callback) {
-  var index = 0;
-  var fields = this.fields;
-  var valid = true;
-  (function exec() {
-    if (index == fields.length) return callback(valid);
-    var field = fields[index++];
-    if (field) field.validate(function(err) {
-      if (err) valid = false;
-      field.error = err;
-      exec();
-    });
-    else exec();
-  })();
-}
-
-function retrieveData() {
-  var data = {};
-  for (var index = 0; index <= this.fields.length; ++index) {
-    var field = this.fields[index];
-    if (field == undefined || field.type == 'label' || field.name == undefined) continue;
-    addToData(data, field.name, field.data);
-  }
-  return data;
-}
-
-function addToData(data, key, value) {
-  var obj = data;
-  var index = -1;
-  while ((index = key.indexOf('.')) != -1) {
-    var base = key.substr(0, index);
-    key = key.substr(index + 1);
-    var element = obj[base];
-      if (element == undefined) element = obj[base] = {};
-    obj = element;
-  }
-  obj[key] = value;
-}
-
-function setData(data) {
-  for (var index = 0; index < this.fields.length; ++index) {
-    var field = this.fields[index];
-    field && (field.data = data);
-  }
-}
-
-function clearData() {
-  for (var index = 0; index < this.fields.length; ++index) {
-    var field = this.fields[index];
-    field && field.clear();
-  }
-}
-
 /*
- * Fields
+ * Field
  */
 
 function Field(config) {
   config = config || {};
-  var type = config.fieldType || 'label';
-  var label = config.label;
-  var name = config.name;
-  var options = config.options || {};
-  updateOptionsDeprecated(options, config) // TODO remove: deprecated
-  var component = buildFieldComponent(type, label, options);
-  return {
-    get type() { return type; },
-    get error() { return component == null; },
-    get label() { return label; },
-    get name() { return name; },
-    get options() { return options; },
-    get component() { return component; },
-    set data(data) {
-      if (this.type == 'label' || this.name == undefined) return;
-      if ('function' == typeof options.enabled) {
-        if (!options.enabled(data)) component.input.attr('disabled', "disabled");
-        else component.input.removeAttr('disabled');
-      }
-      var chunk = this.name.split('.'), val = data;
-      for (var index = 0; index < chunk.length && val != undefined; ++index) {
-        val = val[chunk[index]];
-      }
-      this.component.setData(val);
-    },
-    get data() {
-      if (this.type == 'label') return;
-      return this.component.getData();
-    },
-    validate: function(callback) {
-      if (this.type == 'label' || typeof this.options.validator != 'function')
-        return callback();
-      this.options.validator(this.data, callback);
-    },
-    set error(err) {
-      if (this.type != 'label' && this.component && this.component.error) {
-        if (err) this.component.error.html(err);
-        else this.component.error.html('');
-      }
-    },
-    isLoaded: function() {
-		return !this.error && (this.component.loaded == undefined ||
-							   this.component.loaded === true);
-    },
-    load: function(selected, callback) {
-      if (!this.error && this.component.load) this.component.load(selected, callback);
-      else callback();
-    },
-    clear: function() {
-		this.data = undefined;
-		if (typeof this.component.clear == 'function')
-			this.component.clear();
-	}
+  this.type = config.fieldType || 'label';
+  this.label = config.label;
+  this.name = config.name;
+  this.options = config.options || {};
+  if (this.type == 'field') this.component = config.component;
+  else buildComponent.call(this);
+  this.isLoaded = function() {
+    return this.component.loaded !== false;
   };
-}
-
-function updateOptionsDeprecated(options, config) { // TODO remove: deprecated
-  var deprecated = ['type', 'multiple', 'src'];
-  deprecated.forEach(function(dep) {
-    if (config[dep] != undefined) {
-      options[dep] = config[dep];
-      console.warn("Field attribute", dep,
-        "is deprecated ! Replaced by options."+dep);
+  this.load = function(data, cb) {
+    if (this.isLoaded()) return cb();
+    if ('function' != typeof this.component.load) {
+      this.component.load = true;
+      return cb();
     }
-  });
+    this.component.load.call(this, data, cb);
+  };
+  this.setError = function(err) {
+    if (this.component.error) {
+      if (err) this.component.html.addClass('error');
+      else this.component.html.removeClass('error');
+      this.component.error.html(err || '');
+    }
+  };
+  this.validate = function(callback) {
+    if (typeof this.options.validator != 'function') return callback();
+    this.options.validator.call(this.getData(), callback);
+  };
+  this.setData = function(data) {
+    if ('function' != typeof this.component.setData || this.name == undefined) return;
+    if ('function' == typeof this.options.enabled) {
+      if (!this.options.enabled(data))
+        this.component.input.attr('disabled', "disabled");
+      else this.component.input.removeAttr('disabled');
+    }
+    var chunk = this.name.split('.'), val = data;
+    for (var index = 0; index < chunk.length && val != undefined; ++index) {
+      val = val[chunk[index]];
+    }
+    this.component.setData(val);
+  };
+  this.clear = 'function' == typeof this.component.clear ?
+    this.component.clear.bind(this.component) : function() {};
+  this.getData = 'function' == typeof this.component.getData ?
+    this.component.getData.bind(this.component) : undefined;
 }
 
-function buildFieldComponent(type, label, options) {
-  var component = { html: $('<div class="control-group"/>') };
-  if (type == 'label') {
-    buildLabelComponent(component, label);
-  } else if (type == 'input') {
-    if (options.type == 'text') {
-		buildTextComponent(component, label, options.attr);
-    } else if (options.type == 'password') {
-      buildPasswordComponent(component, label);
-    } else if (options.type == 'checkbox') {
-      buildCheckboxComponent(component, label, options);
-    } else if (options.type == 'textarea') {
-		buildTextareaComponent(component, label, options.attr);
-    } else if (options.type == 'select') {
-      buildSelectComponent(component, label, options);
-    } else return console.error("Field input type", options.type, "not managed !");
-	  setComponentAttr(component.input, options.attr);
-  } else if (type == 'div') {
-	  buildDivComponent(component, options);
-	  setComponentAttr(component.input, options);
-  } else if (type == 'button') {
-	  buildButtonComponent(component, label, options);
-	  setComponentAttr(component.input, options.attr);
-  } else return console.error("Field type", type, "not managed !");
-  if ('boolean' == typeof options.enabled) {
-    if (options.enabled === false) component.input.attr('disabled', "disabled");
-    else component.input.removeAttr('disabled');
+function buildComponent() {
+  this.component = { html: $('<div class="control-group"/>') };
+  if (this.type == 'label') buildLabel.call(this);
+  else if (this.type == 'input') {
+    if (this.options.type == 'text') buildInputText.call(this);
+    else if (this.options.type == 'password') buildInputPassword.call(this);
+    else if (this.options.type == 'checkbox') buildInputCheckbox.call(this);
+    else if (this.options.type == 'textarea') buildInputTextarea.call(this);
+    else if (this.options.type == 'select') buildInputSelect.call(this);
+    else return console.error("Input field type", this.options.type, "not managed !");
+  } else if (this.type == 'div') buildDiv.call(this);
+  else if (this.type == 'button') buildButton.call(this);
+  else return console.error("Field type", this.type, "not managed !");
+  if (this.component.input) {
+    if ('boolean' == typeof this.options.enabled) {
+      if (this.options.enabled === false)
+        this.component.input.attr('disabled', "disabled");
+      else this.component.input.removeAttr('disabled');
+    }
+    if (this.options.attrs) for (var opt in this.options.attrs)
+      this.component.input.attr(opt, this.options.attrs[opt]);
   }
-  return component;
 }
 
-function setComponentAttr(component, attrs) {
-	if (attrs) {
-		for (var opt in attrs) {
-			component.attr(opt, attrs[opt]);
-		}
-	}
+function buildLabel() {
+  if (this.label)
+    $('<label/>').text(this.label)
+      .appendTo(this.component.html);
 }
 
-function buildLabelComponent(component, label) {
-  if (label)
-    $('<label class="control-label"/>').text(label)
-      .appendTo(component.html);
+function buildInputText() {
+  if (this.label)
+    $('<label class="control-label"/>').text(this.label)
+      .appendTo(this.component.html);
+  var ctl = $('<div class="controls"/>').appendTo(this.component.html);
+  this.component.input = $('<input type="text"/>').appendTo(ctl);
+  this.component.error = $('<div class="error"/>').appendTo(ctl);
+  this.component.setData = function(data) { this.input.val(data || ""); };
+  this.component.getData = function() { return this.input.val(); }
 }
 
-function buildButtonComponent(component, label, options) {
-	var ctl = $('<div class="controls"/>').appendTo(component.html);
-	component.input = $('<button />').text(label).appendTo(ctl);
-	component.input.bind('click', function() {
-		options.onclick();
-		return false;
-	});
+function buildInputPassword() {
+  if (this.label)
+    $('<label class="control-label"/>').text(this.label)
+      .appendTo(this.component.html);
+  var ctl = $('<div class="controls"/>').appendTo(this.component.html);
+  this.component.input = $('<input type="password"/>').appendTo(ctl);
+  this.component.error = $('<div class="error"/>').appendTo(ctl);
+  this.component.setData = function(data) { this.input.val(data || ""); };
+  this.component.getData = function() { return this.input.val(); }
 }
 
-function buildDivComponent(component, options) {
-	//var ctl = $('<div class="controls"/>').appendTo(component.html);
-	component.input = $('<div />').appendTo(component.html);
-	component.clear = function() {
-		component.input.html('');
-	}
-}
-
-function buildTextComponent(component, label, attrs) {
-  if (label)
-    $('<label class="control-label"/>').text(label)
-      .appendTo(component.html);
-  var ctl = $('<div class="controls"/>').appendTo(component.html);
-  component.input = $('<input type="text"/>').appendTo(ctl);
-  component.error = $('<div class="error"/>').appendTo(ctl);
-  component.setData = function(data) { this.input.val(data || ""); };
-  component.getData = function() { return this.input.val(); }
-}
-
-function buildPasswordComponent(component, label) {
-  if (label)
-    $('<label class="control-label"/>').text(label)
-      .appendTo(component.html);
-  var ctl = $('<div class="controls"/>').appendTo(component.html);
-  component.input = $('<input type="password"/>').appendTo(ctl);
-  component.error = $('<div class="error"/>').appendTo(ctl);
-  component.setData = function(data) { this.input.val(data || ""); };
-  component.getData = function() { return this.input.val(); }
-}
-
-function buildCheckboxComponent(component, label) {
-  var ctl = $('<div class="controls"/>').appendTo(component.html);
-  component.input = $('<input type="checkbox"/>')
+function buildInputCheckbox() {
+  var ctl = $('<div class="controls"/>').appendTo(this.component.html);
+  this.component.input = $('<input type="checkbox"/>')
     .appendTo($('<label class="checkbox"/>')
         .appendTo(ctl));
-    if (label) component.input.after(label);
-  component.error = $('<div class="error"/>').appendTo(ctl);
-  component.setData = function(data) {
+  if (this.label) this.component.input.after(this.label);
+  this.component.error = $('<div class="error"/>').appendTo(ctl);
+  this.component.setData = function(data) {
     this.input.prop('checked', data || false);
   };
-  component.getData = function() { return this.input.prop('checked'); }
+  this.component.getData = function() { return this.input.prop('checked'); }
 }
 
-function buildTextareaComponent(component, label) {
-  if (label)
-    $('<label class="control-label"/>').text(label)
-      .appendTo(component.html);
-  var ctl = $('<div class="controls"/>').appendTo(component.html);
-  component.input = $('<textarea/>').appendTo(ctl);
-  component.error = $('<div class="error"/>').appendTo(ctl);
-  component.setData = function(data) { this.input.val(data || ""); };
-  component.getData = function() { return this.input.val(); }
+function buildInputTextarea() {
+  if (this.label)
+    $('<label class="control-label"/>').text(this.label)
+      .appendTo(this.component.html);
+  var ctl = $('<div class="controls"/>').appendTo(this.component.html);
+  this.component.input = $('<textarea/>').appendTo(ctl);
+  this.component.error = $('<div class="error"/>').appendTo(ctl);
+  this.component.setData = function(data) { this.input.val(data || ""); };
+  this.component.getData = function() { return this.input.val(); }
 }
 
-function buildSelectComponent(component, label, options) {
-  if (label)
-    $('<label class="control-label"/>').text(label)
-      .appendTo(component.html);
-  var ctl = $('<div class="controls"/>').appendTo(component.html);
-  component.input = $('<select/>').appendTo(ctl);
-  if (options.multiple === true) component.input.attr('multiple', 'multiple');
-  else component.input.append('<option/>');
-  component.error = $('<div class="error"/>').appendTo(ctl);
-  component.setData = function(data) {
-    if (data == undefined)
-      return this.input.find('option:selected').removeAttr('selected')
-    var equals = getEqualsFunction(options);
-    this.input.find('option').each(function() {
-		if (typeof data == "object" && data.length != undefined) {
-			for (var index = 0; index < data.length; ++index) {
-				if (equals($(this).attr('key'), data[index])) {
-					return $(this).attr('selected', 'selected');
-				}
-			}
-		} else {
-			if (equals($(this).attr('key'), data))
-				return $(this).attr('selected', 'selected');
-		}
+function buildInputSelect() {
+  var self = this;
+  if (self.label)
+    $('<self.label class="control-label"/>').text(self.label)
+      .appendTo(self.component.html);
+  var ctl = $('<div class="controls"/>').appendTo(self.component.html);
+  self.component.input = $('<select/>').appendTo(ctl);
+  if (self.options.multiple === true) self.component.input.attr('multiple', 'multiple');
+  else if (self.options.forbidEmpty !== true) self.component.input.append('<option/>');
+  self.component.error = $('<div class="error"/>').appendTo(ctl);
+  self.component.loaded = false;
+  self.component.getData = function() {
+    if (self.component.input.attr('multiple') != null) {
+    var data = [];
+    self.component.input.find('option:selected').each(function() {
+      data.push($(this).attr('key'));
+    });
+    } else data = self.component.input.find('option:selected').attr('key');
+    return data || null;
+  }
+  self.component.setData = function(data) {
+    if (data == undefined) return self.component.input.find('option:selected')
+      .removeAttr('selected')
+    var equals = getEqualsFunction(self.options);
+    self.component.input.find('option').each(function() {
+      if (typeof data == "object" && data.length != undefined) {
+        for (var index = 0; index < data.length; ++index) {
+          if (equals($(this).attr('key'), data[index])) {
+            return $(this).attr('selected', 'selected');
+          }
+        }
+      } else if (equals($(this).attr('key'), data))
+        return $(this).attr('selected', 'selected');
       $(this).removeAttr('selected');
     });
   };
-  component.getData = function() {
-    var data = [];
-    this.input.find('option:selected').each(function() {
-      data.push($(this).attr('key'));
+  self.component.load = function(selected, callback) {
+    if (!self.options.src && !self.options.values) return callback();
+    loadValues(selected, self.options.src || self.options.values, function(err, data) {
+      if (err) return callback(err);
+      self.component.input.empty();
+      if (self.component.input.attr('multiple') == null &&
+        self.options.forbidEmpty !== true) self.component.input.append('<option/>');
+      if (!data) return;
+      for (var index = 0; index < data.length; ++index) {
+        var d = data[index];
+        if (d) self.component.input.append($('<option/>')
+          .attr('key', d.key).text(d.value));
+      }
+      self.loaded = true && self.options.alwaysReload !== true;
+      callback();
     });
-    return data;
-  }
-  component.loaded = false;
-  component.load = function(selected, callback) {
-    if (options.src || options.values) {
-      loadValues(selected, options.src || options.values , function(err, data) {
-        if (err) return callback(err);
-        setSelectValues(component.input, data);
-        component.loaded = true && options.alwaysReload !== true;
-        callback();
-      });
-    } else callback();
   };
+}
+
+function buildDiv() {
+	//var ctl = $('<div class="controls"/>').appendTo(this.component.html);
+	this.component.input = $('<div />').appendTo(this.component.html);
+	this.component.clear = function() {
+		this.component.input.html('');
+	}
+}
+
+function buildButton() {
+	var ctl = $('<div class="controls"/>').appendTo(this.component.html);
+	this.component.input = $('<button />').text(this.label).appendTo(ctl);
+	this.component.input.bind('click', function() {
+		this.options.onclick();
+		return false;
+	});
 }
 
 function getEqualsFunction(options) {
@@ -492,16 +452,6 @@ function getEqualsFunction(options) {
     equals = function(key, val) { return key == val; };
   }
   return equals;
-}
-
-function setSelectValues(select, data) {
-  select.empty();
-  if (select.attr('multiple') == null) select.append('<option/>');
-  if (!data) return;
-  for (var index = 0; index < data.length; ++index) {
-    var d = data[index];
-    if (d) select.append($('<option/>').attr('key', d.key).text(d.value));
-  }
 }
 
 function loadValues(selected, src, callback) {
@@ -571,12 +521,12 @@ function ActifSelect(button, config, rows) {
 }
 
 function create(nButton, oConfig, oFlash) {
-  if (!$(nButton).hasClass('disabled') && oConfig.editor)
+  if (!$(nButton).hasClass('disabled') && oConfig.editor && oConfig.editor.create)
     oConfig.editor.create();
 }
 
 function edit(nButton, oConfig, oFlash) {
-  if (!$(nButton).hasClass('disabled') && oConfig.editor) {
+  if (!$(nButton).hasClass('disabled') && oConfig.editor && oConfig.editor.edit) {
     var selectedData = this.fnGetSelectedData();
     if (selectedData.length != 1)
       return console.error("Internal Error: edit cannot be called against more or less than 1 row !");
@@ -586,7 +536,7 @@ function edit(nButton, oConfig, oFlash) {
 }
 
 function remove(nButton, oConfig, oFlash) {
-  if (!$(nButton).hasClass('disabled') && oConfig.editor) {
+  if (!$(nButton).hasClass('disabled') && oConfig.editor && oConfig.editor.remove) {
     var selectedData = this.fnGetSelectedData();
     oConfig.editor.remove(selectedData);
   }
