@@ -427,18 +427,20 @@ function buildInputSelect() {
 }
 
 function buildDiv() {
-	//var ctl = $('<div class="controls"/>').appendTo(this.component.html);
-	this.component.input = $('<div />').appendTo(this.component.html);
-	this.component.clear = function() {
-		this.component.input.html('');
+  var self = this;
+	//var ctl = $('<div class="controls"/>').appendTo(self.component.html);
+	self.component.input = $('<div />').appendTo(self.component.html);
+	self.component.clear = function() {
+		self.component.input.html('');
 	}
 }
 
 function buildButton() {
-	var ctl = $('<div class="controls"/>').appendTo(this.component.html);
-	this.component.input = $('<button />').text(this.label).appendTo(ctl);
-	this.component.input.bind('click', function() {
-		this.options.onclick();
+  var self = this;
+	var ctl = $('<div class="controls"/>').appendTo(self.component.html);
+	self.component.input = $('<button />').text(self.label).appendTo(ctl);
+	self.component.input.bind('click', function() {
+		self.options.onclick();
 		return false;
 	});
 }
