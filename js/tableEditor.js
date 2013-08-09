@@ -314,8 +314,10 @@ function buildComponent() {
         this.component.input.attr('disabled', "disabled");
       else this.component.input.removeAttr('disabled');
     }
-    if (this.options.attrs) for (var opt in this.options.attrs)
-      this.component.input.attr(opt, this.options.attrs[opt]);
+    if (this.options.attr) for (var key in this.options.attr)
+      this.component.input.attr(opt, this.options.attr[key]);
+    if (this.options.style) for (var key in this.options.style)
+      this.component.input.css(opt, this.options.style[key]);
   }
 }
 
