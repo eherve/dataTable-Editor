@@ -433,7 +433,7 @@ function buildDiv() {
 	//var ctl = $('<div class="controls"/>').appendTo(self.component.html);
 	self.component.input = $('<div />').appendTo(self.component.html);
 	self.component.clear = function() {
-		self.component.input.html('');
+		self.component.input.empty();
 	}
 }
 
