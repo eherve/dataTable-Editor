@@ -336,6 +336,7 @@ function buildInputText() {
   this.component.error = $('<div class="error"/>').appendTo(ctl);
   this.component.setData = function(data) { this.input.val(data || ""); };
   this.component.getData = function() { return this.input.val(); }
+  this.component.clear = function() { this.setData(); }
 }
 
 function buildInputPassword() {
@@ -347,6 +348,7 @@ function buildInputPassword() {
   this.component.error = $('<div class="error"/>').appendTo(ctl);
   this.component.setData = function(data) { this.input.val(data || ""); };
   this.component.getData = function() { return this.input.val(); }
+  this.component.clear = function() { this.setData(); }
 }
 
 function buildInputCheckbox() {
@@ -360,6 +362,7 @@ function buildInputCheckbox() {
     this.input.prop('checked', data || false);
   };
   this.component.getData = function() { return this.input.prop('checked'); }
+  this.component.clear = function() { this.input.removeAttr('checked'); }
 }
 
 function buildInputTextarea() {
@@ -371,6 +374,7 @@ function buildInputTextarea() {
   this.component.error = $('<div class="error"/>').appendTo(ctl);
   this.component.setData = function(data) { this.input.val(data || ""); };
   this.component.getData = function() { return this.input.val(); }
+  this.component.clear = function() { this.setData(); }
 }
 
 function buildInputSelect() {
@@ -432,9 +436,7 @@ function buildDiv() {
   var self = this;
 	//var ctl = $('<div class="controls"/>').appendTo(self.component.html);
 	self.component.input = $('<div />').appendTo(self.component.html);
-	self.component.clear = function() {
-		self.component.input.empty();
-	}
+  this.component.clear = function() { this.input.empty(); }
 }
 
 function buildButton() {
