@@ -491,6 +491,9 @@ $.extend(true, "new_button", TableTools.buttonBase, {
   sButtonText: "New",
   sButtonClass: "btn",
   editor: null,
+  fnInit: initButton,
+  bShowIcon: true,
+  sIconClass: 'icon-pencil',
   fnClick: create
 });
 
@@ -500,6 +503,9 @@ $.extend(true, "edit_button", TableTools.buttonBase, {
   sButtonClass: "btn disabled",
   fnSelect: ActifSelectSingle,
   editor: null,
+  fnInit: initButton,
+  bShowIcon: true,
+  sIconClass: 'icon-edit',
   fnClick: edit
 });
 
@@ -509,8 +515,17 @@ $.extend(true, "remove_button", TableTools.buttonBase, {
   sButtonClass: "btn disabled",
   fnSelect: ActifSelect,
   editor: null,
+  fnInit: initButton,
+  bShowIcon: true,
+  sIconClass: 'icon-trash',
   fnClick: remove
 });
+
+function initButton(nButton, oConfig) {
+  if (oConfig.bShowIcon !== false && oConfig.sIconClass != null) {
+    $(nButton).prepend('<i class="'+oConfig.sIconClass+'" style="padding-right:5px;"/>')
+  }
+}
 
 function ActifSelectSingle(button, config, rows) {
   if (config.editor.isEnabled(this.fnGetSelectedData(), $(button)) &&
