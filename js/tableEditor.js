@@ -478,6 +478,7 @@ $.fn.dataTableExt.oApi.fnReloadAjax = function(oSettings, sNewSource) {
 
 TableTools.BUTTONS.new_button =
 $.extend(true, "new_button", TableTools.buttonBase, {
+  sButtonType: 'new',
   sButtonText: "New",
   sButtonClass: "btn",
   bIsEnabled: true,
@@ -491,6 +492,7 @@ $.extend(true, "new_button", TableTools.buttonBase, {
 
 TableTools.BUTTONS.edit_button =
 $.extend(true, "edit_button", TableTools.buttonBase, {
+  sButtonType: 'edit',
   sButtonText: "Edit",
   sButtonClass: "btn disabled",
   fnSelect: ActifSelectSingle,
@@ -505,6 +507,7 @@ $.extend(true, "edit_button", TableTools.buttonBase, {
 
 TableTools.BUTTONS.remove_button =
 $.extend(true, "remove_button", TableTools.buttonBase, {
+  sButtonType: 'remove',
   sButtonText: "Remove",
   sButtonClass: "btn disabled",
   fnSelect: ActifSelect,
@@ -521,11 +524,12 @@ function initButton(nButton, oConfig) {
   if (oConfig.bShowIcon !== false && oConfig.sIconClass != null) {
     $(nButton).prepend('<i class="'+oConfig.sIconClass+'" style="padding-right:5px;"/>')
   }
-  var selectedData = this.fnGetSelectedData();
+  var selectedData = [];
   if (isVisible(oConfig, selectedData, nButton))
     $(nButton).css('display', '');
   else $(nButton).css('display', 'none');
-  if (isEnabled(oConfig, selectedData, nButton) && selectedData.length == 1)
+  if (oConfig.sButtonType == 'new' &&
+      isEnabled(oConfig, selectedData, nButton))
     $(nButton).removeClass('disabled');
   else $(nButton).addClass('disabled');
 }
