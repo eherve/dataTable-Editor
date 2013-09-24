@@ -8,16 +8,6 @@ var Editor = $.fn.dataTable.Editor = function(config) {
   // dom table
   if (!config.domTable) return alert("Missing editor domTable !");
   self.domTable = config.domTable;
-  // enabled
-  if ('boolean' == typeof config.isEnabled)
-    self.isEnabled = function() { return config.isEnabled; };
-  else if ('string' == typeof config.isEnabled)
-    self.isEnabled = function() {
-      return config.isEnabled.toUpperCase() == 'TRUE'; };
-  else if ('function' == typeof config.isEnabled)
-    self.isEnabled = config.isEnabled;
-  else
-    self.isEnabled = function() { return true; };
   // method
   self.method = config.method || "POST";
   // url
@@ -490,6 +480,8 @@ TableTools.BUTTONS.new_button =
 $.extend(true, "new_button", TableTools.buttonBase, {
   sButtonText: "New",
   sButtonClass: "btn",
+  bIsEnabled: true,
+  bIsVisible: true,
   editor: null,
   fnInit: initButton,
   bShowIcon: true,
@@ -502,6 +494,8 @@ $.extend(true, "edit_button", TableTools.buttonBase, {
   sButtonText: "Edit",
   sButtonClass: "btn disabled",
   fnSelect: ActifSelectSingle,
+  bIsEnabled: true,
+  bIsVisible: true,
   editor: null,
   fnInit: initButton,
   bShowIcon: true,
@@ -514,6 +508,8 @@ $.extend(true, "remove_button", TableTools.buttonBase, {
   sButtonText: "Remove",
   sButtonClass: "btn disabled",
   fnSelect: ActifSelect,
+  bIsEnabled: true,
+  bIsVisible: true,
   editor: null,
   fnInit: initButton,
   bShowIcon: true,
@@ -525,20 +521,47 @@ function initButton(nButton, oConfig) {
   if (oConfig.bShowIcon !== false && oConfig.sIconClass != null) {
     $(nButton).prepend('<i class="'+oConfig.sIconClass+'" style="padding-right:5px;"/>')
   }
+  var selectedData = this.fnGetSelectedData();
+  if (isVisible(oConfig, selectedData, nButton))
+    $(nButton).css('display', '');
+  else $(nButton).css('display', 'none');
+  if (isEnabled(oConfig, selectedData, nButton) && selectedData.length == 1)
+    $(nButton).removeClass('disabled');
+  else $(nButton).addClass('disabled');
 }
 
 function ActifSelectSingle(button, config, rows) {
-  if (config.editor.isEnabled(this.fnGetSelectedData(), $(button)) &&
-      this.fnGetSelected().length == 1)
+  var selectedData = this.fnGetSelectedData();
+  if (isVisible(config, selectedData, button))
+    $(button).css('display', '');
+  else $(button).css('display', 'none');
+  if (isEnabled(config, selectedData, button) && selectedData.length == 1)
     $(button).removeClass('disabled');
   else $(button).addClass('disabled');
 }
 
 function ActifSelect(button, config, rows) {
-  if (config.editor.isEnabled(this.fnGetSelectedData(), $(button)) &&
-      this.fnGetSelected().length > 0)
+  var selectedData = this.fnGetSelectedData();
+  if (isVisible(config, selectedData, button))
+    $(button).css('display', '');
+  else $(button).css('display', 'none');
+  if (isEnabled(config, selectedData, button) && selectedData.length > 0)
     $(button).removeClass('disabled');
   else $(button).addClass('disabled');
+}
+
+function isEnabled(config, selectedData, button) {
+  if (config.bIsEnabled === true) return true;
+  if ('function' == typeof config.bIsEnabled)
+    return config.bIsEnabled(selectedData, button);
+  return false;
+}
+
+function isVisible(config, selectedData, button) {
+  if (config.bIsVisible === true) return true;
+  if ('function' == typeof config.bIsVisible)
+    return config.bIsVisible(selectedData, button);
+  return false;
 }
 
 function create(nButton, oConfig, oFlash) {
