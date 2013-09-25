@@ -433,7 +433,8 @@ function buildButton() {
   var self = this;
 	var ctl = $('<div class="controls"/>').appendTo(self.component.html);
 	self.component.input = $('<button />').text(self.label).appendTo(ctl);
-	self.component.input.bind('click', function() {
+	self.component.input.bind('click', function(event) {
+    event.preventDefault();
 		self.options.onclick();
 		return false;
 	});
