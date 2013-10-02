@@ -175,7 +175,7 @@ function retrieveData() {
   var data = {};
   for (var index = 0; index <= this.fields.length; ++index) {
     var field = this.fields[index];
-    if (field && field.getData != undefined)
+    if (field && field.name && field.getData != undefined)
       addToData(data, field.name, field.getData());
   }
   return data;
@@ -267,6 +267,9 @@ function Field(config) {
     this.options.validator.call(this.getData(), callback);
   };
   this.setData = function(data) {
+    if ('function' == typeof config.setData) {
+      return config.setData.call(this, data);
+    }
     if ('function' != typeof this.component.setData || this.name == undefined) return;
     if ('function' == typeof this.options.enabled) {
       if (!this.options.enabled(data))
@@ -279,8 +282,15 @@ function Field(config) {
     }
     this.component.setData(val);
   };
-  this.clear = 'function' == typeof this.component.clear ?
-    this.component.clear.bind(this.component) : function() {};
+  this.clear = function() {
+    if ('boolean' == typeof this.options.enabled) {
+      if (this.options.enabled === false)
+        this.component.input.attr('disabled', "disabled");
+      else this.component.input.removeAttr('disabled');
+    }
+    if ('function' == typeof this.component.clear)
+      this.component.clear();
+  };
   this.getData = 'function' == typeof this.component.getData ?
     this.component.getData.bind(this.component) : undefined;
 }
@@ -288,9 +298,11 @@ function Field(config) {
 function buildComponent() {
   this.component = { html: $('<div class="control-group"/>') };
   if (this.type == 'label') buildLabel.call(this);
+  else if (this.type == 'legend') buildLegend.call(this);
   else if (this.type == 'input') {
-    if (this.options.type == 'text') buildInputText.call(this);
-    else if (this.options.type == 'password') buildInputPassword.call(this);
+    if (this.options.type == 'text') buildSimpleInput.call(this, this.options.type);
+    else if (this.options.type == 'password') buildSimpleInput.call(this, this.options.type);
+    else if (this.options.type == 'date') buildSimpleInput.call(this, this.options.type);
     else if (this.options.type == 'checkbox') buildInputCheckbox.call(this);
     else if (this.options.type == 'textarea') buildInputTextarea.call(this);
     else if (this.options.type == 'select') buildInputSelect.call(this);
@@ -317,26 +329,20 @@ function buildLabel() {
       .appendTo(this.component.html);
 }
 
-function buildInputText() {
+function buildLegend() {
   if (this.label)
-    $('<label class="control-label"/>').text(this.label)
+    $('<legend/>').text(this.label)
       .appendTo(this.component.html);
-  var ctl = $('<div class="controls"/>').appendTo(this.component.html);
-  this.component.input = $('<input type="text"/>').appendTo(ctl);
-  this.component.error = $('<div class="error"/>').appendTo(ctl);
-  this.component.setData = function(data) { this.input.val(data || ""); };
-  this.component.getData = function() { return this.input.val(); }
-  this.component.clear = function() { this.setData(); }
 }
 
-function buildInputPassword() {
+function buildSimpleInput(type) {
   if (this.label)
     $('<label class="control-label"/>').text(this.label)
       .appendTo(this.component.html);
   var ctl = $('<div class="controls"/>').appendTo(this.component.html);
-  this.component.input = $('<input type="password"/>').appendTo(ctl);
+  this.component.input = $('<input type="' + type + '"/>').appendTo(ctl);
   this.component.error = $('<div class="error"/>').appendTo(ctl);
-  this.component.setData = function(data) { this.input.val(data || ""); };
+  this.component.setData = function(data) { this.input.val(data != null ? data : ""); };
   this.component.getData = function() { return this.input.val(); }
   this.component.clear = function() { this.setData(); }
 }
@@ -352,7 +358,14 @@ function buildInputCheckbox() {
     this.input.prop('checked', data || false);
   };
   this.component.getData = function() { return this.input.prop('checked'); }
-  this.component.clear = function() { this.input.removeAttr('checked'); }
+  this.component.clear = function() {
+    this.input.removeAttr('checked'); }
+  if ('function' == typeof this.options.change) {
+    var self = this;
+    self.component.input.bind('change', function(event) {
+      return self.options.change.call(this, event);
+    });
+  }
 }
 
 function buildInputTextarea() {
@@ -435,7 +448,7 @@ function buildButton() {
 	self.component.input = $('<button />').text(self.label).appendTo(ctl);
 	self.component.input.bind('click', function(event) {
     event.preventDefault();
-		self.options.onclick();
+    self.options.onclick.call(this, event);
 		return false;
 	});
 }
