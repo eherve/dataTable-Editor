@@ -264,7 +264,7 @@ function Field(config) {
   };
   this.validate = function(callback) {
     if (typeof this.options.validator != 'function') return callback();
-    this.options.validator.call(this.getData(), callback);
+    this.options.validator(this.getData(), callback);
   };
   this.setData = function(data) {
     if ('function' == typeof config.setData) {
