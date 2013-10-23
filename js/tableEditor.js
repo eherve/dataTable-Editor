@@ -64,7 +64,7 @@ function buildModal(config) {
   // fields
   for(var index = 0; index < self.fields.length; ++index) {
     var field = self.fields[index];
-      if (field && !field.error) field.component.html.appendTo(self.form);
+      if (field && !field.error) self.form.append(field.html);
   }
   self.errorBlock = $('<div class="alert alert-error hide">')
     .appendTo(modalBody);
@@ -112,8 +112,13 @@ function _create() {
 function _edit(selectedRowData) {
   var self = this;
   loadFields.call(self, selectedRowData, function() {
-    for (var index = 0; index < self.fields.length; ++index)
-      self.fields[index] && (self.fields[index].setData(selectedRowData));
+    for (var index = 0; index < self.fields.length; ++index) {
+      var field = self.fields[index];
+      if (field) {
+        field.setData(selectedRowData);
+        field.updateEnabled(selectedRowData);
+      }
+    }
     self.validateButton.on('click', function() {
       var data = retrieveData.call(self)
       validateFields.call(self, function(valid) {
@@ -238,15 +243,18 @@ function fail(jqXHR) {
 
 function Field(config) {
   config = config || {};
+  this.id = config.id;
   this.type = config.fieldType || 'label';
   this.label = config.label;
   this.name = config.name;
   this.options = config.options || {};
   if (this.type == 'field') this.component = config.component;
   else buildComponent.call(this);
-  this.isLoaded = function() {
-    return this.component.loaded !== false;
-  };
+
+  this.html = this.component ? this.component.html || this.component : "";
+
+  this.isLoaded = function() { return this.component.loaded !== false; };
+
   this.load = function(data, cb) {
     if (this.isLoaded()) return cb();
     if ('function' != typeof this.component.load) {
@@ -255,6 +263,7 @@ function Field(config) {
     }
     this.component.load.call(this, data, cb);
   };
+
   this.setError = function(err) {
     if (this.component.error) {
       if (err) this.component.html.addClass('error');
@@ -262,37 +271,47 @@ function Field(config) {
       this.component.error.html(err || '');
     }
   };
+
   this.validate = function(callback) {
     if (typeof this.options.validator != 'function') return callback();
     this.options.validator(this.getData(), callback);
   };
+
   this.setData = function(data) {
     if ('function' == typeof config.setData) {
-      return config.setData.call(this, data);
-    }
-    if ('function' != typeof this.component.setData || this.name == undefined) return;
-    if ('function' == typeof this.options.enabled) {
-      if (!this.options.enabled(data))
-        this.component.input.attr('disabled', "disabled");
-      else this.component.input.removeAttr('disabled');
-    }
-    var chunk = this.name.split('.'), val = data;
-    for (var index = 0; index < chunk.length && val != undefined; ++index) {
-      val = val[chunk[index]];
-    }
-    this.component.setData(val);
+      config.setData.call(this, data);
+    } else if ('function' == typeof this.component.setData && this.name != undefined) {
+      var chunk = this.name.split('.'), val = data;
+      for (var index = 0; index < chunk.length && val != undefined; ++index) {
+        val = val[chunk[index]];
+      }
+      this.component.setData(val);
+    } else return;
   };
+
   this.clear = function() {
+    if ('function' == typeof config.clear) config.clear();
+    else if ('function' == typeof this.component.clear) this.component.clear();
+    else return;
+    this.updateEnabled();
+  };
+
+  this.getData = 'function' == typeof config.getData ?
+    config.getData : 'function' == typeof this.component.getData ?
+      this.component.getData.bind(this.component) : undefined;
+
+  this.updateEnabled = function(data) {
     if ('boolean' == typeof this.options.enabled) {
       if (this.options.enabled === false)
         this.component.input.attr('disabled', "disabled");
       else this.component.input.removeAttr('disabled');
+    } else if ('function' == typeof this.options.enabled) {
+      if (!this.options.enabled.call(this, data))
+        this.component.input.attr('disabled', "disabled");
+      else this.component.input.removeAttr('disabled');
     }
-    if ('function' == typeof this.component.clear)
-      this.component.clear();
-  };
-  this.getData = 'function' == typeof this.component.getData ?
-    this.component.getData.bind(this.component) : undefined;
+  }
+  this.updateEnabled();
 }
 
 function buildComponent() {
@@ -311,11 +330,6 @@ function buildComponent() {
   else if (this.type == 'button') buildButton.call(this);
   else return console.error("Field type", this.type, "not managed !");
   if (this.component.input) {
-    if ('boolean' == typeof this.options.enabled) {
-      if (this.options.enabled === false)
-        this.component.input.attr('disabled', "disabled");
-      else this.component.input.removeAttr('disabled');
-    }
     if (this.options.attr) for (var key in this.options.attr)
       this.component.input.attr(key, this.options.attr[key]);
     if (this.options.style) for (var key in this.options.style)
@@ -324,15 +338,13 @@ function buildComponent() {
 }
 
 function buildLabel() {
-  if (this.label)
-    $('<label/>').text(this.label)
-      .appendTo(this.component.html);
+  this.component.input = $('<label/>').text(this.label)
+    .appendTo(this.component.html);
 }
 
 function buildLegend() {
-  if (this.label)
-    $('<legend/>').text(this.label)
-      .appendTo(this.component.html);
+  this.component.input = $('<legend/>').text(this.label)
+    .appendTo(this.component.html);
 }
 
 function buildSimpleInput(type) {
