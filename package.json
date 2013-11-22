@@ -9,5 +9,6 @@
   "authors": [
     "Francois-Regis Robert",
     "Eric Herve <eric.herve.95@gmail.com>"
-  ]
+  ],
+  "keywords": [ "dataTable" ]
 }
