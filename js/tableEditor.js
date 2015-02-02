@@ -50,17 +50,22 @@ var Editor = $.fn.dataTable.Editor = function(config) {
 
 function buildModal(config) {
   var self = this;
-  self.modal = $('<div class="modal fade", tabindex="-1", role="dialog",' +
+  self.modal = $('<div class="modal fade" tabindex="-1" role="dialog"' +
       ' aria-hidden="true"/>').appendTo($(self.domTable));
+  var dialog = $('<div class="modal-dialog"/>').appendTo($(self.modal));
+  var content = $('<div class="modal-content"/>').appendTo($(dialog));
+
   // header
-  var modalHeader = $('<div class="modal-header"/>').appendTo(self.modal);
+  var modalHeader = $('<div class="modal-header"/>').appendTo(content);
   $('<button type="button" class="close" data-dismiss="modal"' +
       ' aria-hidden="true">&times</button>').appendTo(modalHeader);
   $('<h3/>').appendTo(modalHeader).text(config.title || '');
+
   // body
-  var modalBody = $('<div class="modal-body"/>').appendTo(self.modal);
+  var modalBody = $('<div class="modal-body"/>').appendTo(content);
   self.form = $('<form class="form-horizontal"/>')
     .appendTo(modalBody).attr('method', self.method).attr('url', self.url);
+
   // fields
   for(var index = 0; index < self.fields.length; ++index) {
     var field = self.fields[index];
@@ -69,13 +74,15 @@ function buildModal(config) {
   self.errorBlock = $('<div class="alert alert-error hide">')
     .appendTo(modalBody);
   self.error = $('<span id="error-span"/>').appendTo(self.errorBlock);
+
   // footer
-  var modalFooter = $('<div class="modal-footer"/>').appendTo(self.modal);
+  var modalFooter = $('<div class="modal-footer"/>').appendTo(content);
   $('<button class="btn", data-dismiss="modal", aria-hidden="true"/>')
     .appendTo(modalFooter).text(config.closeText || '');
   self.validateButton =
     $('<button class="btn btn-primary"/>').appendTo(modalFooter)
     .text(config.validateText || '');
+
   self.modal.on('hide', function() {
     self.validateButton.off('click');
     self.errorBlock.text("");
